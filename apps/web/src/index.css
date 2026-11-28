@@ -672,7 +672,7 @@
   .sidebar .nav-link--secondary {
     display: none;
   }
-  /* Three tabs (Read · Words · More), thumb-sized: 56px tall, a 24px icon, a 12px label. */
+  /* Four tabs (Read · Words · Practice · More), thumb-sized: 56px tall, a 24px icon, a 12px label. */
   .nav-link,
   .nav-more {
     position: relative;
@@ -693,7 +693,7 @@
     box-sizing: content-box;
     width: 24px;
     height: 24px;
-    padding: 2px 18px;
+    padding: 2px 14px;
     border-radius: var(--radius-chip);
     transition: background-color var(--dur-fast) var(--ease);
   }
@@ -1158,11 +1158,6 @@
 .feel-row small {
   display: block;
 }
-/* Practice under Words in the sidebar (computer). */
-.nav-link--sub {
-  padding-left: 30px;
-  font-size: 13.5px;
-}
 /* The end of a reader page: practise the words tapped on it (mock-practice-lessons.html). */
 .page-end {
   display: flex;
@@ -1206,9 +1201,8 @@
     max-width: none;
     align-self: stretch;
   }
-  .practice-start .lesson-card--main {
+  .practice-start .lessons-h {
     grid-column: 1 / -1;
-    padding: 18px;
   }
 }
 .practice-aside {
@@ -1284,9 +1278,52 @@
   border-radius: 14px;
   cursor: pointer;
 }
-.lesson-card--main {
-  border-color: var(--accent);
-  background: var(--surface-2, var(--surface));
+.lessons-h {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+/* Today's lesson: big on top, one Start (mock-practice-words A). */
+.lesson-hero {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  max-width: 640px;
+  padding: 18px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.lesson-hero-k {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.lesson-hero-title {
+  margin: 0;
+  font: 600 21px/1.25 var(--font-display);
+  text-wrap: balance;
+}
+.lesson-hero-sub {
+  color: var(--ink-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.lesson-hero-start {
+  margin-top: 8px;
+  min-width: 160px;
+  min-height: 48px;
+  font-size: 16px;
+}
+@media (max-width: 699px) {
+  .lesson-hero-start {
+    justify-self: stretch;
+  }
 }
 .lesson-card:disabled {
   opacity: 0.6;

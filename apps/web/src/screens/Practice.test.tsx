@@ -61,7 +61,6 @@ describe("Practice start view", () => {
     const { services, user } = setup();
     await waitFor(() => expect(screen.getByRole("button", { name: "Listening" })).toBeEnabled());
     expect(await screen.findByText(/^\d+ due · \d+ new$/)).toBeInTheDocument();
-    expect(screen.getByText(/Practice trains what Anki doesn.t/)).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /^Start · \d+ due$/ })).toBeInTheDocument();
     await user.click(screen.getByText("Options"));
     const chips = ["Recognition", "Recall", "Forms", "Gender", "Listening"];

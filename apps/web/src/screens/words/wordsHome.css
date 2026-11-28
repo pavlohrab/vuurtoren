@@ -105,3 +105,61 @@
     flex: 1 1 100%;
   }
 }
+/* Your words on the phone's home: Learning or Known, the first few, All words. */
+.words-peek {
+  display: grid;
+  gap: var(--s-3);
+}
+.words-peek-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.words-peek-chip {
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.words-peek-chip[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.words-peek-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+}
+.words-peek-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-3);
+  min-height: 44px;
+  padding: var(--s-2) var(--s-1);
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+  text-decoration: none;
+}
+.words-peek-word {
+  font-family: var(--font-reading);
+  font-size: 17px;
+}
+.words-peek-gloss {
+  color: var(--ink-muted);
+  font-size: 13px;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}

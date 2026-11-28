@@ -478,50 +478,63 @@ function StartView({
             {error ? (
               <ErrorNotice error={error} title="The lesson could not be prepared." onRetry={go} />
             ) : null}
-            <div className="lessons" role="group" aria-label="Lessons">
-              {src?.page ? (
-                <LessonCard
-                  main
-                  icon={<BookOpen size={18} aria-hidden />}
-                  title={src.page.title}
-                  sub={`${plural(src.page.keys.length, "word")} you tapped`}
-                  words={src.page.keys}
-                  onClick={() => practise(src.page!.keys)}
-                />
-              ) : null}
-              {o && (o.due > 0 || o.newAvailable > 0) ? (
-                <LessonCard
-                  main={!src?.page}
-                  icon={<Dumbbell size={18} aria-hidden />}
-                  title="Your new words"
-                  sub={loading ? "Preparing…" : `${o.due} due · ${o.newAvailable} new`}
-                  label={startLabel}
-                  disabled={loading || effective.length === 0}
-                  onClick={go}
-                />
-              ) : null}
-              {src?.mistakes.length ? (
-                <LessonCard
-                  icon={<ListChecks size={18} aria-hidden />}
-                  title="Mistakes"
-                  sub={`${plural(src.mistakes.length, "word")} you got wrong this week`}
-                  onClick={() => practise(src.mistakes)}
-                />
-              ) : null}
-              {src?.weak && grammarTopic(src.weak.topic) ? (
-                <LessonCard
-                  icon={<MessagesSquare size={18} aria-hidden />}
-                  title={grammarTopic(src.weak.topic)!.title}
-                  sub={`${plural(src.weak.misses, "miss", "misses")} this week`}
-                  onClick={() =>
-                    void navigate({
-                      to: "/grammar/$topic/practice",
-                      params: { topic: src.weak!.topic },
-                    })
-                  }
-                />
-              ) : null}
-            </div>
+            {/* Today's lesson big on top, then what else waits (mock-practice-words A). */}
+            {src?.page ? (
+              <LessonHero
+                title={src.page.title}
+                sub={`${plural(src.page.keys.length, "word")} you tapped`}
+                label="Start"
+                onClick={() => practise(src.page!.keys)}
+              />
+            ) : o && (o.due > 0 || o.newAvailable > 0) ? (
+              <LessonHero
+                title="Your new words"
+                sub={loading ? "Preparing…" : `${o.due} due · ${o.newAvailable} new`}
+                label={startLabel}
+                disabled={loading || effective.length === 0}
+                onClick={go}
+              />
+            ) : null}
+            {(src?.page && o && (o.due > 0 || o.newAvailable > 0)) ||
+            src?.mistakes.length ||
+            (src?.weak && grammarTopic(src.weak.topic)) ? (
+              <div className="lessons" role="group" aria-labelledby="lessons-also-h">
+                <h2 id="lessons-also-h" className="lessons-h">
+                  Also
+                </h2>
+                {src?.page && o && (o.due > 0 || o.newAvailable > 0) ? (
+                  <LessonCard
+                    icon={<Dumbbell size={18} aria-hidden />}
+                    title="Your new words"
+                    sub={loading ? "Preparing…" : `${o.due} due · ${o.newAvailable} new`}
+                    label={startLabel}
+                    disabled={loading || effective.length === 0}
+                    onClick={go}
+                  />
+                ) : null}
+                {src?.mistakes.length ? (
+                  <LessonCard
+                    icon={<ListChecks size={18} aria-hidden />}
+                    title="Mistakes"
+                    sub={`${plural(src.mistakes.length, "word")} you got wrong this week`}
+                    onClick={() => practise(src.mistakes)}
+                  />
+                ) : null}
+                {src?.weak && grammarTopic(src.weak.topic) ? (
+                  <LessonCard
+                    icon={<MessagesSquare size={18} aria-hidden />}
+                    title={grammarTopic(src.weak.topic)!.title}
+                    sub={`Grammar · ${plural(src.weak.misses, "miss", "misses")} this week`}
+                    onClick={() =>
+                      void navigate({
+                        to: "/grammar/$topic/practice",
+                        params: { topic: src.weak!.topic },
+                      })
+                    }
+                  />
+                ) : null}
+              </div>
+            ) : null}
             {noVoice ? (
               <p className="k-hint practice-note" role="note">
                 Add a Dutch voice in your system&rsquo;s settings to practise listening and
@@ -529,7 +542,6 @@ function StartView({
               </p>
             ) : null}
             {wide ? null : options}
-            <PracticeNote native={review.data?.native === true} keys={!wide} />
           </div>
           {wide ? (
             <aside className="practice-aside" aria-label="About your practice">
@@ -1119,31 +1131,54 @@ function TodayCount() {
 }
 
 /** One lesson to start from, as on the mock. */
+/** Today's lesson: what it is, and one big Start. */
+function LessonHero({
+  title,
+  sub,
+  label,
+  disabled = false,
+  onClick,
+}: {
+  title: string;
+  sub: string;
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <section className="lesson-hero" aria-labelledby="lesson-hero-h">
+      <span className="lesson-hero-k">Today&rsquo;s lesson</span>
+      <h2 id="lesson-hero-h" className="lesson-hero-title">
+        {title}
+      </h2>
+      <span className="lesson-hero-sub">{sub}</span>
+      <Button variant="primary" className="lesson-hero-start" disabled={disabled} onClick={onClick}>
+        {label}
+      </Button>
+    </section>
+  );
+}
+
 function LessonCard({
   icon,
   title,
   sub,
-  main = false,
   label,
-  words,
   disabled = false,
   onClick,
 }: {
   icon: ReactNode;
   title: string;
   sub: string;
-  main?: boolean;
   /** The accessible name, when it should say more than the title. */
   label?: string;
-  /** The lesson's words, shown as chips (the main card on a computer). */
-  words?: string[];
   disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      className={`lesson-card${main ? " lesson-card--main" : ""}`}
+      className="lesson-card"
       onClick={onClick}
       disabled={disabled}
       {...(label ? { "aria-label": label } : {})}
@@ -1152,16 +1187,6 @@ function LessonCard({
       <span className="lesson-text">
         <b>{title}</b>
         <small>{sub}</small>
-        {words?.length ? (
-          <span className="lesson-chips" lang="nl">
-            {words.slice(0, 6).map((k) => (
-              <span key={k} className="lesson-chip">
-                {k}
-              </span>
-            ))}
-            {words.length > 6 ? <span className="lesson-chip">+{words.length - 6}</span> : null}
-          </span>
-        ) : null}
       </span>
       <ChevronRight size={18} className="lesson-go" aria-hidden />
     </button>

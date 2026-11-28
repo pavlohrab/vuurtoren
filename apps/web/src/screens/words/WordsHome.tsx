@@ -1,13 +1,13 @@
 /**
- * Words: what is due today first (Start opens the review in focus mode), then the word lists,
- * Practice and the level check. With Vuurtoren's own cards the day's work is the review queue,
+ * Words: what is due today first (Start opens the review in focus mode), then your level and
+ * your list. With Vuurtoren's own cards the day's work is the review queue,
  * as in Anki: due cards first, then new words up to the daily limit (Settings → Your words).
  * Connected to Anki, the reviews happen in Anki and Words shows the lists.
  */
 import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate } from "@tanstack/react-router";
-import { BookOpenCheck, ChevronRight, Dumbbell, Gauge, Layers } from "lucide-react";
-import { type ReactNode, useSyncExternalStore } from "react";
+import { ChevronRight, Gauge } from "lucide-react";
+import { type ReactNode, useState, useSyncExternalStore } from "react";
 import { Skeleton, useNativeMode } from "@app/ui";
 import { plural } from "../../format.js";
 import { useServices } from "../../services/context.js";
@@ -58,7 +58,7 @@ export function WordsHome() {
   );
 }
 
-/** Due today, then the word lists, Practice and the level check: Words home, and the desktop's left column. */
+/** The phone's Words home (mock-practice-words A): the review, your level, then your list. */
 export function WordsAside() {
   const services = useServices();
   const native = useNativeMode();
@@ -67,54 +67,90 @@ export function WordsAside() {
     queryFn: () => services.reviewOverview(),
     enabled: native,
   });
-  const summary = useQuery({ queryKey: ["learner"], queryFn: () => services.learnerSummary() });
-  const practice = useQuery({
-    queryKey: ["practice", "overview"],
-    queryFn: () => services.practiceOverview(),
-    staleTime: 60_000,
-  });
   const level = useCurrentLevel();
 
   return (
     <>
       {native ? <DueToday due={today.data?.due} fresh={today.data?.fresh} /> : <AnkiNote />}
-
-      <nav className="words-home-list" aria-label="Your words">
-        <Row
-          to="/words/all"
-          search={{ state: "learning", layout: "list" }}
-          icon={<Layers size={18} />}
-          title="Learning"
-          detail={summary.data ? `${fmt(summary.data.learning)} words` : null}
-        />
-        <Row
-          to="/words/all"
-          search={{ state: "decide", layout: "list" }}
-          icon={<BookOpenCheck size={18} />}
-          title="Met while reading"
-          detail="New words from your texts"
-        />
-        <Row
-          to="/practice"
-          icon={<Dumbbell size={18} />}
-          title="Practice"
-          detail={
-            practice.data
-              ? practice.data.due
-                ? `${plural(practice.data.due, "exercise")} due`
-                : "Exercises with your words"
-              : null
-          }
-        />
+      <nav className="words-home-list" aria-label="Your level">
         <Row
           to="/words/all"
           search={level ? { layout: "cards", level: String(level.level) } : { layout: "cards" }}
           icon={<Gauge size={18} />}
-          title="Check your level"
+          title="Your level"
           detail={level ? `${starterBand(level.level)} · ${progressText(level)}` : null}
         />
       </nav>
+      <WordsPeek />
     </>
+  );
+}
+
+/** How many words the phone's home shows before All words. */
+const PEEK = 12;
+
+/** Your words on the phone's home: Learning or Known, the first few, and All words. */
+function WordsPeek() {
+  const services = useServices();
+  const [state, setState] = useState<"learning" | "known">("learning");
+  const summary = useQuery({ queryKey: ["learner"], queryFn: () => services.learnerSummary() });
+  const words = useQuery({
+    queryKey: ["words", "peek", state],
+    queryFn: () => services.words({ state, limit: PEEK }),
+    staleTime: 30_000,
+  });
+  const count = (n: number | undefined) => (n === undefined ? "" : ` ${fmt(n)}`);
+  return (
+    <section className="words-peek" aria-labelledby="words-peek-h">
+      <h2 id="words-peek-h" className="due-today-label">
+        Your words
+      </h2>
+      <div className="words-peek-chips" role="radiogroup" aria-label="Show">
+        {(
+          [
+            ["learning", "Learning", summary.data?.learning],
+            ["known", "Known", summary.data?.known],
+          ] as const
+        ).map(([value, label, n]) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={state === value}
+            className="words-peek-chip"
+            onClick={() => setState(value)}
+          >
+            {label}
+            {count(n)}
+          </button>
+        ))}
+      </div>
+      {words.data === undefined ? (
+        <Skeleton style={{ height: 160 }} />
+      ) : words.data.length === 0 ? (
+        <p className="due-today-parts">
+          {state === "learning" ? "Words you add while reading show here." : "None yet."}
+        </p>
+      ) : (
+        <ul className="words-peek-list">
+          {words.data.map((w) => (
+            <li key={w.key}>
+              <Link to="/words/all" search={{ word: w.key }} className="words-peek-row">
+                <span className="words-peek-word">{w.article ? `${w.article} ${w.key}` : w.key}</span>
+                {w.gloss ? <span className="words-peek-gloss">{w.gloss}</span> : null}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Link
+        to="/words/all"
+        search={{ state, layout: "list" }}
+        className="words-aside-link"
+      >
+        All words →
+      </Link>
+    </section>
   );
 }
 

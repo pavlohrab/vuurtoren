@@ -230,10 +230,10 @@ for (const size of SIZES) {
         return first.getBoundingClientRect().top;
       });
       expect(notices).toBeGreaterThanOrEqual(32);
-      // Three thumb-sized tabs, all of them 8px or more above the gesture handle (34px here).
+      // Four thumb-sized tabs, all of them 8px or more above the gesture handle (34px here).
       const nav = page.getByRole("navigation", { name: "Main" });
       const tabs = nav.locator(".nav-link:visible, .nav-more");
-      await expect(tabs).toHaveCount(3);
+      await expect(tabs).toHaveCount(4);
       for (const box of await tabs.evaluateAll((els) =>
         els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect),
       )) {

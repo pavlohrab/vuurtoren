@@ -192,8 +192,8 @@ export function AppShell() {
     staleTime: 60_000,
   });
   const native = review.data?.native === true;
-  // With Anki the badge counts practice instead; failures just hide the badge. Not asked in
-  // native mode, where the badge is Review's: it read every card at each start and word action.
+  // Practice's badge, with Anki only; failures just hide it. Not asked in native mode: it read
+  // every card at each start and word action.
   const practice = useQuery({
     queryKey: ["practice", "overview"],
     queryFn: () => services.practiceOverview(),
@@ -206,7 +206,6 @@ export function AppShell() {
   const talk = ai.data?.configured === true;
   const room = roomOf(pathname);
   const onPractice = /^\/practice(\/|$)/.test(pathname);
-  const wordsDue = native ? review.data?.due : practice.data?.due;
 
   // ⌘K / Ctrl+K opens the palette from anywhere.
   useEffect(() => {
@@ -361,26 +360,26 @@ export function AppShell() {
                 <Logo size={26} className="brand-logo" title="Vuurtoren" />
                 <span className="beta-tag">Beta</span>
               </Link>
-              {/* The two rooms, then the quieter places; on a phone: Read · Words · More. */}
+              {/* Read, Words and Practice, then the quieter places; on a phone: Read · Words · Practice · More. */}
               <NavLink to="/" label="Read" icon={<BookOpen size={18} />} active={room === "read"} />
-              {/* Words opens on its home: Due today first, then the word lists and Practice. */}
+              {/* Words opens on its home: the review first, then your level and your list. */}
               <NavLink
                 to="/words"
                 label="Words"
                 icon={<Languages size={18} />}
                 active={room === "words" && !onPractice}
-                badge={wordsDue}
-                badgeNoun={native ? "card" : "exercise"}
-                badgeWhere={native ? "Review" : "Practice"}
+                badge={native ? review.data?.due : undefined}
+                badgeNoun="card"
+                badgeWhere="Review"
               />
-              {/* Practice has its own row under Words on a computer (folded on a phone). */}
               <NavLink
                 to="/practice"
                 label="Practice"
-                icon={<Dumbbell size={16} />}
+                icon={<Dumbbell size={18} />}
                 active={onPractice}
-                secondary
-                sub
+                badge={practice.data?.due}
+                badgeNoun="exercise"
+                badgeWhere="Practice"
               />
               <div className="nav-divider" role="separator" />
               <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} secondary />
@@ -709,7 +708,6 @@ function NavLink({
   badgeWhere = "Practice",
   active,
   secondary,
-  sub,
 }: {
   to: FixedRoute;
   label: string;
@@ -722,10 +720,8 @@ function NavLink({
   active?: boolean;
   /** Folded into the phone tab bar's More sheet. */
   secondary?: boolean;
-  /** A place inside the row above it (Practice under Words): indented. */
-  sub?: boolean;
 }) {
-  const className = `${secondary ? "nav-link nav-link--secondary" : "nav-link"}${sub ? " nav-link--sub" : ""}`;
+  const className = secondary ? "nav-link nav-link--secondary" : "nav-link";
   return (
     <Link
       to={to}
