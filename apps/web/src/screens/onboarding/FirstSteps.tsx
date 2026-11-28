@@ -8,6 +8,7 @@ import { starterBand } from "@app/anki";
 import { Button, ExerciseCard, type ExerciseFeedback } from "@app/ui";
 import { useMemo, useState } from "react";
 import type { PlacementBand } from "../../services/profileTypes.js";
+import { buzz, moving, play as playSound, useFeel, useSoundUnlock } from "../../practice/feel.js";
 
 /** Practice questions before the level check. */
 const QUESTIONS = 3;
@@ -60,11 +61,14 @@ export function TryPractice({
   const [at, setAt] = useState(0);
   const [feedback, setFeedback] = useState<ExerciseFeedback | null>(null);
   const [submitted, setSubmitted] = useState<string | null>(null);
+  // Practice's own sounds and movement (Settings → Practice), so this is a real taste of it.
+  const feel = useFeel();
+  useSoundUnlock();
   const current = questions[at];
   if (!current) return null;
   const last = at === questions.length - 1;
   return (
-    <div className="ob-practice">
+    <div className={`ob-practice${moving(feel) ? " practice-move" : ""}`}>
       <ExerciseCard
         key={current.id}
         exercise={current}
@@ -72,9 +76,14 @@ export function TryPractice({
         submitted={submitted}
         continueLabel={last ? "Next" : "Continue"}
         onSubmit={({ answer }) => {
+          const correct = answer === current.answer;
           setSubmitted(answer);
-          setFeedback({ correct: answer === current.answer });
+          setFeedback({ correct });
+          playSound(correct ? "right" : "wrong", feel);
+          if (!correct) buzz(feel);
         }}
+        onTick={() => playSound("tick", feel)}
+        onMiss={() => playSound("wrong", feel)}
         onContinue={() => {
           if (last) return onDone();
           setAt(at + 1);

@@ -179,16 +179,21 @@ function visible(selector: string): Element | null {
     }
     return null;
   }
-  for (const el of document.querySelectorAll(selector)) {
+  const shown = [...document.querySelectorAll(selector)].filter((el) => {
     const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden") {
-      // Outside the screen (a long page, a short landscape screen): bring it into view first.
-      if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth)
-        el.scrollIntoView?.({ block: "center", inline: "nearest" });
-      return el;
-    }
-  }
-  return null;
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
+  });
+  const off = (el: Element) => {
+    const r = el.getBoundingClientRect();
+    return r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth;
+  };
+  // The first one on the screen (the story's first word on its page, not a copy of another
+  // page in book mode); else the first one, brought into view.
+  const onScreen = shown.find((el) => !off(el));
+  if (onScreen) return onScreen;
+  const first = shown[0];
+  first?.scrollIntoView?.({ block: "center", inline: "nearest" });
+  return first ?? null;
 }
 
 /** The learner's current story: Continue reading, else the story at their level (opened). */
