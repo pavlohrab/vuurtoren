@@ -179,21 +179,22 @@ function visible(selector: string): Element | null {
     }
     return null;
   }
-  const shown = [...document.querySelectorAll(selector)].filter((el) => {
-    const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
-  });
-  const off = (el: Element) => {
-    const r = el.getBoundingClientRect();
-    return r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth;
-  };
   // The first one on the screen (the story's first word on its page, not a copy of another
-  // page in book mode); else the first one, brought into view.
-  const onScreen = shown.find((el) => !off(el));
-  if (onScreen) return onScreen;
-  const first = shown[0];
+  // page in book mode); else the first one, brought into view. Stops at the first on screen:
+  // this runs four times a second, and a story has thousands of words.
+  let first: Element | null = null;
+  for (const el of document.querySelectorAll(selector)) {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    const off =
+      r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth;
+    if (off && first) continue;
+    if (getComputedStyle(el).visibility === "hidden") continue;
+    if (!off) return el;
+    first = el;
+  }
   first?.scrollIntoView?.({ block: "center", inline: "nearest" });
-  return first ?? null;
+  return first;
 }
 
 /** The learner's current story: Continue reading, else the story at their level (opened). */

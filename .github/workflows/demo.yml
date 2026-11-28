@@ -38,3 +38,15 @@ jobs:
         run: |
           npx --yes wrangler@3.114.0 pages project create vuurtoren-demo --production-branch main || true
           npx --yes wrangler@3.114.0 pages deploy apps/web/dist --project-name vuurtoren-demo --branch main
+      # demo.vuurtoren.app on the project (once; later runs see it there), and what the account has.
+      - name: The address
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+          auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
+          echo "Pages projects in this account:"
+          curl -s "${auth[@]}" "$api" | jq -r '.result[] | "  \(.name): \(.subdomain) \(.domains)"'
+          curl -s "${auth[@]}" -X POST "$api/vuurtoren-demo/domains" -d '{"name":"demo.vuurtoren.app"}' \
+            | jq '{success, errors, status: .result.status, validation: .result.validation_data}'
