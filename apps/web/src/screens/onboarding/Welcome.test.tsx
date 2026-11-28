@@ -187,6 +187,9 @@ describe("onboarding", () => {
     await user.click(await screen.findByRole("button", { name: "Skip" }));
     expect(await screen.findByRole("heading", { name: "Do you know these?" })).toBeVisible();
     expect(screen.getByText("1 of 20")).toBeInTheDocument();
+    // The level check can be skipped too: Vuurtoren starts at A1.
+    await user.click(screen.getByRole("button", { name: "Skip" }));
+    expect(await screen.findByRole("heading", { name: "You start at A1" })).toBeVisible();
   });
 
   it("while the words are added, the choices wait and the count shows", async () => {

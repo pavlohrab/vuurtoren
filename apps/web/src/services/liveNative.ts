@@ -788,9 +788,14 @@ export function createLiveNative(deps: LiveNativeDeps) {
    * come back; off, they are suspended, keeping their history. Ids follow the first card's, so
    * two devices make the same card.
    */
+  /** Whether this collection has English → Dutch cards (checked once, then kept). */
+  let reverseMade: boolean | null = null;
   async function syncReverse(lang: string): Promise<void> {
     const on = (await deps.reverseCards?.()) ?? false;
+    // Off and none made yet: nothing to look at (the review count asks often).
+    if (!on && !reverseMade) return;
     const r = await repo.nativeReverse(lang);
+    reverseMade = r.cards.length > 0;
     if (on && r.missing.length) {
       await repo.append({
         type: "NativeNotesAdded",

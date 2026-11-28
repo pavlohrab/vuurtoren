@@ -767,6 +767,17 @@ export function Welcome() {
                 ) : (
                   <Spinner label="Loading words" />
                 )}
+                {/* Skipped: Vuurtoren starts at A1, and Check your level stays in Words. */}
+                <button
+                  type="button"
+                  className="ob-skip"
+                  onClick={() => {
+                    setEstimate(null);
+                    go("ready");
+                  }}
+                >
+                  Skip
+                </button>
               </>
             ) : null}
 
@@ -775,7 +786,7 @@ export function Welcome() {
                 <h1 ref={heading} tabIndex={-1}>
                   {estimate
                     ? `You know about ${estimate.words.toLocaleString("en")} words`
-                    : "You are ready"}
+                    : "You start at A1"}
                 </h1>
                 {estimate ? (
                   <>

@@ -320,21 +320,30 @@ export function createLivePractice(deps: LivePracticeDeps) {
    * each stage in the last 7 days, and one word's stage. Read from the answers, as the lesson's
    * guard rail is (hardestRight); nothing is stored. Use shows with an AI, or once a word got there.
    */
+  /** The stages worked out once and kept until the next answer (a word card asks often). */
+  let ladderCache: { lang: string; at: number; built: Promise<Map<string, number[]>> } | null =
+    null;
   async function practiceLadder(key?: string): Promise<PracticeLadder> {
     const lang = await deps.lang();
-    const answers = toEloAnswers(await repo.practiceAnswers(lang), KNOWN_KINDS);
+    if (!ladderCache || ladderCache.lang !== lang || clock() - ladderCache.at > 10 * 60_000)
+      ladderCache = {
+        lang,
+        at: clock(),
+        built: repo.practiceAnswers(lang).then((rows) => {
+          // Per word: when it first reached stage 1, 2, …; its stage is the last one set.
+          const firstAt = new Map<string, number[]>();
+          for (const a of toEloAnswers(rows, KNOWN_KINDS)) {
+            if (a.result < 0.5) continue;
+            const times = firstAt.get(a.key) ?? [];
+            for (let i = 1; i <= stageOf(STEP_OF[a.kind]); i++) times[i] ??= a.at;
+            firstAt.set(a.key, times);
+          }
+          return firstAt;
+        }),
+      };
+    const firstAt = await ladderCache.built;
     const weekAgo = clock() - 7 * 24 * 60 * 60 * 1000;
-    const stage = new Map<string, number>();
-    // When each word first reached each stage.
-    const firstAt = new Map<string, number[]>();
-    for (const a of answers) {
-      if (a.result < 0.5) continue;
-      const s = stageOf(STEP_OF[a.kind]);
-      stage.set(a.key, Math.max(stage.get(a.key) ?? 0, s));
-      const times = firstAt.get(a.key) ?? [];
-      for (let i = 1; i <= s; i++) if (times[i] === undefined) times[i] = a.at;
-      firstAt.set(a.key, times);
-    }
+    const stage = new Map([...firstAt].map(([k, t]) => [k, t.length - 1]));
     const stages = deps.aiUse?.ready() || [...stage.values()].some((s) => s >= 4) ? 4 : 3;
     const at = Array.from(
       { length: stages },
@@ -959,6 +968,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
       ...extra,
     });
     itemCache.get(lang)!.set(itemId(exercise.key, exercise.skill), next);
+    ladderCache = null;
     // The app's own cards: building and typing also answer the word's due card; the choice
     // exercises don't, because picking the meaning is the card's own job (algorithms.md 4.7.5).
     if (STEP_OF[exercise.kind] >= 3)

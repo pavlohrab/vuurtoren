@@ -471,3 +471,6 @@
 .ob-practice + .ob-skip {
   margin-top: 12px;
 }
+.ob-level + .ob-skip {
+  margin-top: 12px;
+}
