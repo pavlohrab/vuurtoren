@@ -64,6 +64,8 @@ export interface ImportSummary {
   skippedMedia: number;
   /** Cards of the file this collection already had (they stay as they were). */
   alreadyHad?: number;
+  /** Words held twice after it (Vuurtoren's copy and the file's) that are one card again. */
+  merged?: number;
 }
 
 /** A deck, with about how many reviews a day each target recall would mean. */

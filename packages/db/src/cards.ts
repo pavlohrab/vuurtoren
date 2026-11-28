@@ -32,6 +32,7 @@ import type {
   NativeCollection,
   NativeDeckSummary,
   NativeKeyCard,
+  NativeKeyDuplicate,
   NativeNoteStatus,
   NativeQueue,
   QueueExtra,
@@ -875,6 +876,26 @@ export function nativeQueries(driver: SqlDriver) {
         cards: await one("SELECT count(*) AS n FROM native_cards WHERE lang = ?"),
         reviews: await one("SELECT count(*) AS n FROM native_reviews WHERE lang = ?"),
       };
+    },
+
+    async nativeKeyDuplicates(lang: string): Promise<NativeKeyDuplicate[]> {
+      const rows = await driver.exec(
+        `SELECT n.id, n.key, n.origin,
+                (SELECT count(*) FROM native_reviews r JOIN native_cards c ON c.id = r.card_id
+                  WHERE c.note_id = n.id) AS reviews
+           FROM native_notes n
+          WHERE n.lang = ? AND n.key IN (
+            SELECT key FROM native_notes WHERE lang = ? AND key IS NOT NULL
+             GROUP BY key HAVING count(*) > 1)
+          ORDER BY n.key, n.id`,
+        [lang, lang],
+      );
+      return rows.map((r) => ({
+        noteId: Number(r["id"]),
+        key: String(r["key"]),
+        origin: String(r["origin"]),
+        reviews: Number(r["reviews"]),
+      }));
     },
 
     fsrsParams: (lang: string) => paramsOf(driver, lang),

@@ -28,6 +28,8 @@ function summaryText(s: ImportSummary): string {
   if (s.media) parts.push(`${plural(s.media, "media file")}`);
   let text = `Imported ${parts.join(", ")}. ${plural(s.vocabNotes, "note")} feed your word list.`;
   if (had) text += ` ${plural(had, "card")} you already had stayed as they were.`;
+  if (s.merged)
+    text += ` ${plural(s.merged, "word")} you had twice ${s.merged === 1 ? "is" : "are"} one card now.`;
   if (s.skippedMedia) text += ` ${plural(s.skippedMedia, "media file")} could not be kept.`;
   return text;
 }

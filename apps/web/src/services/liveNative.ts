@@ -54,7 +54,12 @@ import {
   studyDayStart,
   trainingSequences,
 } from "@app/core";
-import type { VuurtorenRepository, NativeCardChange, NativeCardView } from "@app/db";
+import type {
+  VuurtorenRepository,
+  NativeCardChange,
+  NativeCardView,
+  NativeKeyDuplicate,
+} from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
 import type { RunOptimizer } from "../native/optimizer.js";
 import { MIN_TRAINING_REVIEWS } from "../native/optimize.js";
@@ -250,6 +255,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
       // Anki's own trained parameters until Vuurtoren tunes on the history.
       await repo.append({ type: "FsrsParamsSet", lang, params: imp.fsrsParams, reviews: 0 });
     }
+    const merged = await mergeDuplicates(lang);
     ownIndex = null;
     deps.changed();
     const added = Math.max(0, (await repo.nativeStats(lang)).cards - before);
@@ -261,7 +267,15 @@ export function createLiveNative(deps: LiveNativeDeps) {
       media: imp.media,
       skippedMedia: imp.skippedMedia,
       alreadyHad: Math.max(0, imp.cards - added),
+      ...(merged ? { merged } : {}),
     };
+  }
+
+  /** One card per word after an import (`duplicatesToRemove`); returns the words merged. */
+  async function mergeDuplicates(lang: string): Promise<number> {
+    const { remove, merged } = duplicatesToRemove(await repo.nativeKeyDuplicates(lang));
+    if (remove.length) await repo.append({ type: "NativeNotesRemoved", lang, noteIds: remove });
+    return merged;
   }
 
   async function importDeps(lang: "nl", origin: "apkg" | "anki", onProgress?: (m: string) => void) {
@@ -825,4 +839,33 @@ export function createLiveNative(deps: LiveNativeDeps) {
   };
 
   return { services, evidence, invalidate: () => (ownIndex = null) };
+}
+
+/**
+ * Where a word is held twice, the note with the most answers stays (on a tie the imported one,
+ * then the oldest) and Vuurtoren's own copies of it go (the starter words, Add to my words).
+ * Notes from Anki or a file are never removed.
+ */
+export function duplicatesToRemove(dups: readonly NativeKeyDuplicate[]): {
+  remove: number[];
+  merged: number;
+} {
+  const byKey = new Map<string, NativeKeyDuplicate[]>();
+  for (const d of dups) byKey.set(d.key, [...(byKey.get(d.key) ?? []), d]);
+  const remove: number[] = [];
+  let merged = 0;
+  for (const notes of byKey.values()) {
+    const keep = [...notes].sort(
+      (a, b) =>
+        b.reviews - a.reviews ||
+        Number(a.origin === "vuurtoren") - Number(b.origin === "vuurtoren") ||
+        a.noteId - b.noteId,
+    )[0]!;
+    const gone = notes.filter((n) => n !== keep && n.origin === "vuurtoren");
+    if (gone.length) {
+      merged++;
+      remove.push(...gone.map((n) => n.noteId));
+    }
+  }
+  return { remove, merged };
 }

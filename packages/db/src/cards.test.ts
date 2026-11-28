@@ -421,6 +421,51 @@ describe("native card store", () => {
     });
   });
 
+  it("finds the notes of a word held twice, with their answers", async () => {
+    const { repo } = await newRepo();
+    const note = (id: number) => ({
+      id,
+      notetypeId: WORD.id,
+      fields: ["de kat", "", ""],
+      tags: [],
+      key: "kat",
+    });
+    const deck = { name: "Vuurtoren::Nederlands", options: DEFAULT_DECK_OPTIONS };
+    await repo.append({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "vuurtoren",
+      notetypes: [WORD],
+      decks: [deck],
+      notes: [note(5)],
+      cards: [{ id: 6, noteId: 5, ord: 0, deck: deck.name, position: 0 }],
+    });
+    await repo.append({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "apkg",
+      notetypes: [WORD],
+      decks: [deck],
+      notes: [note(20)],
+      cards: [{ id: 21, noteId: 20, ord: 0, deck: deck.name, position: 1 }],
+    });
+    await repo.append({
+      type: "CardReviewed",
+      lang: "nl",
+      cardId: 21,
+      rating: 3,
+      at: T0,
+      durationMs: 1,
+      schedule: answerCard(undefined, 3, T0, ctx),
+    });
+    expect(await repo.nativeKeyDuplicates("nl")).toEqual([
+      { noteId: 5, key: "kat", origin: "vuurtoren", reviews: 0 },
+      { noteId: 20, key: "kat", origin: "apkg", reviews: 1 },
+    ]);
+    await repo.append({ type: "NativeNotesRemoved", lang: "nl", noteIds: [5] });
+    expect(await repo.nativeKeyDuplicates("nl")).toEqual([]);
+  });
+
   it("rebuilds to the same tables", async () => {
     const { repo } = await newRepo();
     await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });

@@ -636,6 +636,16 @@ export interface StoredText extends TextSummary {
   analyzedAt?: number;
 }
 
+/** One note of a word held more than once (nativeKeyDuplicates). */
+export interface NativeKeyDuplicate {
+  noteId: number;
+  key: string;
+  /** How it came in: "vuurtoren" (starter words, Add to my words), "apkg" or "anki". */
+  origin: string;
+  /** Answers on its cards. */
+  reviews: number;
+}
+
 export interface WordInfo {
   key: string;
   state: WordState;
@@ -1017,6 +1027,8 @@ export interface Repository {
   nativeCollection(lang: string, decks: string[]): Promise<NativeCollection>;
   /** Native mode: notes, cards and answers held, for Settings. */
   nativeStats(lang: string): Promise<{ notes: number; cards: number; reviews: number }>;
+  /** Native mode: every note of a word held more than once (by key), with its answers. */
+  nativeKeyDuplicates(lang: string): Promise<NativeKeyDuplicate[]>;
   /** Native mode: the FSRS parameters in use, or null for the defaults. */
   fsrsParams(lang: string): Promise<FsrsParamsRecord | null>;
   /**
