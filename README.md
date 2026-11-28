@@ -22,6 +22,11 @@
 </p>
 
 <p align="center">
+  Or <a href="https://demo.vuurtoren.app">try it in your browser</a> first. What you do there stays
+  in your browser.
+</p>
+
+<p align="center">
   <a href="https://vuurtoren.app">vuurtoren.app</a> ·
   <a href="https://vuurtoren.app/docs/quick-start.html">Quick start</a> ·
   <a href="https://vuurtoren.app/docs/install.html">Install</a> ·
